@@ -8,23 +8,11 @@
 - `/expense` 支出模块：支出分类卡片、弹窗记账、今日支出列表、分类占比图
 - `/income` 收入模块：收入分类卡片、弹窗记账、今日收入列表、分类占比图
 
-统一账本结构：
-
-```ts
-type Transaction = {
-  id: string;
-  type: "income" | "expense";
-  category: string;
-  amount: number;
-  note?: string;
-  createdAt: string;
-};
-```
 
 ## 启动后端
 
 ```powershell
-cd D:\Desktop\manage\backend
+cd manage\backend
 python -m pip install -r requirements.txt
 python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
@@ -32,7 +20,7 @@ python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ## 启动前端
 
 ```powershell
-cd D:\Desktop\manage\frontend
+cd manage\frontend
 npm.cmd install
 npm.cmd run dev
 ```
@@ -41,7 +29,7 @@ npm.cmd run dev
 
 ## DeepSeek V4
 
-在 `D:\Desktop\manage\backend` 创建 `.env`：
+在 `manage\backend` 创建 `.env`：
 
 ```env
 DEEPSEEK_API_KEY=你的 DeepSeek 密钥
@@ -50,18 +38,3 @@ OPENAI_MODEL=deepseek-v4-pro
 DEEPSEEK_THINKING=disabled
 ```
 
-也可以把模型换成更快的 `deepseek-v4-flash`。
-
-## AI 接口
-
-前端预留并使用了两个函数：
-
-- `analyzeTextExpense(text)`：文本收入/支出分析
-- `analyzeImageBill(file)`：图片账单识别
-
-代码位置：`frontend/src/services/ai.js`。
-
-后端接口：
-
-- `POST /api/agent/text`
-- `POST /api/agent/receipt`
