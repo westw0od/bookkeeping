@@ -1,0 +1,103 @@
+{
+  "$defs": {
+    "ImportRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "external_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "External Id",
+          "type": "string"
+        },
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "income",
+            "expense"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Amount"
+        },
+        "category": {
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Note",
+          "type": "string"
+        },
+        "counterparty": {
+          "default": "",
+          "maxLength": 80,
+          "title": "Counterparty",
+          "type": "string"
+        },
+        "event": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Event",
+          "type": "string"
+        }
+      },
+      "required": [
+        "external_id",
+        "date",
+        "type",
+        "amount",
+        "category"
+      ],
+      "title": "ImportRecord",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "bookkeeping.v1",
+      "title": "Format",
+      "type": "string"
+    },
+    "source": {
+      "maxLength": 80,
+      "minLength": 1,
+      "title": "Source",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/ImportRecord"
+      },
+      "maxItems": 1000,
+      "minItems": 1,
+      "title": "Records",
+      "type": "array"
+    }
+  },
+  "required": [
+    "format",
+    "source",
+    "records"
+  ],
+  "title": "ImportDocument",
+  "type": "object"
+}

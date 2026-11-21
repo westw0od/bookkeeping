@@ -1,0 +1,36 @@
+{
+  "format": "bookkeeping.v1",
+  "source": "历史账本-2026",
+  "records": [
+    {
+      "external_id": "expense-001",
+      "date": "2026-11-01",
+      "type": "expense",
+      "amount": "25.00",
+      "category": "饮食",
+      "note": "午餐",
+      "counterparty": "",
+      "event": ""
+    },
+    {
+      "external_id": "gift-001",
+      "date": "2026-10-01",
+      "type": "expense",
+      "amount": "500.00",
+      "category": "人情",
+      "note": "随礼",
+      "counterparty": "张三",
+      "event": "婚礼"
+    },
+    {
+      "external_id": "gift-002",
+      "date": "2026-11-08",
+      "type": "income",
+      "amount": "300.00",
+      "category": "人情",
+      "note": "收到礼金",
+      "counterparty": "张三",
+      "event": "生日"
+    }
+  ]
+}

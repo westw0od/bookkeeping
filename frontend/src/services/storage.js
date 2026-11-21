@@ -1,74 +1,38 @@
-const STORAGE_KEY = "smart-ledger-transactions";
+import { api, loadLedgerSafely } from "./api";
 
 export const expenseCategories = ["饮食", "购物", "娱乐", "出行", "旅游", "教育", "医疗", "人情", "水电", "其他"];
 export const incomeCategories = ["工资", "补贴", "兼职", "人情", "幸运", "奖金", "投资", "其他"];
 
-export function loadTransactions() {
-  return loadLocalTransactions();
-}
-
 export async function loadTransactionsFromStore() {
-  try {
-    const response = await fetch("/api/ledger");
-    if (!response.ok) throw new Error("database unavailable");
-    const records = await response.json();
-    saveLocalTransactions(records);
-    return records;
-  } catch {
-    return loadLocalTransactions();
-  }
+  const result = await loadLedgerSafely();
+  return result || [];
 }
 
-function loadLocalTransactions() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveTransactions(records) {
-  saveLocalTransactions(records);
-}
-
-function saveLocalTransactions(records) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-}
-
-export function createTransaction({ type, category, amount, note = "", createdAt }) {
-  return {
-    id: crypto.randomUUID(),
-    type,
-    category,
-    amount: Number(amount),
-    note,
-    createdAt: createdAt || new Date().toISOString()
-  };
-}
-
-export function addTransactions(records) {
-  const current = loadLocalTransactions();
-  const next = [...records, ...current];
-  saveLocalTransactions(next);
-  return next;
+export function createTransaction({ type, category, amount, note = "", createdAt, counterparty = "", event = "" }) {
+  return { id: crypto.randomUUID(), type, category, amount: Number(amount), note, counterparty, event,
+    createdAt: createdAt || new Date().toISOString() };
 }
 
 export async function addTransactionsToStore(records) {
-  try {
-    const response = await fetch("/api/ledger", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(records)
-    });
-    if (!response.ok) throw new Error("database unavailable");
-    const savedRecords = await response.json();
-    const next = [...savedRecords, ...loadLocalTransactions()];
-    saveLocalTransactions(dedupeById(next));
-    return await loadTransactionsFromStore();
-  } catch {
-    return addTransactions(records);
-  }
+  await api("/api/ledger", { method: "POST", body: records });
+  // Only a server-confirmed result is shown. A failed refresh never claims save failure.
+  const fresh = await loadLedgerSafely();
+  if (fresh === null) throw new Error("账单已保存，但列表刷新失败，请刷新页面；重试同一条记录不会重复入账。");
+  return fresh;
+}
+
+export async function removeTransaction(id) {
+  const result = await api(`/api/ledger/${encodeURIComponent(id)}`, { method: "DELETE" });
+  return result.record;
+}
+
+export async function restoreTransaction(id) {
+  const result = await api(`/api/ledger/${encodeURIComponent(id)}/restore`, { method: "POST" });
+  return result.record;
+}
+
+export function loadRemovedTransactions() {
+  return api("/api/ledger/revoked");
 }
 
 export function isSameDay(isoDate, dateText) {
@@ -87,6 +51,12 @@ export function isToday(isoDate) {
 
 export function recordsByDate(records, dateText, type = "") {
   return records.filter((record) => isSameDay(record.createdAt, dateText) && (!type || record.type === type));
+}
+
+export function inPeriod(record, mode, day, month) {
+  if (mode === 'all') return true;
+  const localDate = dateInputValue(new Date(record.createdAt));
+  return mode === 'day' ? localDate === day : localDate.slice(0, 7) === month;
 }
 
 export function todayRecords(records, type = "") {
@@ -129,15 +99,6 @@ export function formatDateTime(isoDate) {
 
 export function roundMoney(value) {
   return Math.round(Number(value || 0) * 100) / 100;
-}
-
-function dedupeById(records) {
-  const seen = new Set();
-  return records.filter((record) => {
-    if (seen.has(record.id)) return false;
-    seen.add(record.id);
-    return true;
-  });
 }
 
 function parseDateText(dateText) {

@@ -1,0 +1,7 @@
+{
+  "appId": "com.westw0od.bookkeeping",
+  "appName": "记账",
+  "webDir": "dist",
+  "server": { "androidScheme": "https", "cleartext": true },
+  "android": { "allowMixedContent": true, "backgroundColor": "#f4f7fb" }
+}

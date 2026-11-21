@@ -41,7 +41,6 @@
         v-for="category in categories"
         :key="category"
         :class="['category-card', { active: selectedCategory === category }]"
-        :style="categoryCardStyle(category)"
         @click="selectCategory(category)"
       >
         <span class="category-icon" :class="type" :style="categoryIconStyle(category)">
@@ -60,7 +59,7 @@
       </div>
       <ul class="record-list">
         <li v-for="record in selectedCategoryRecords" :key="record.id">
-          <span>{{ recordTitle(record) }}</span>
+          <button class="record-edit-link" :aria-label="`编辑账单：${recordTitle(record)}`" @click="openEntryEditor(record)">{{ recordTitle(record) }}</button>
           <b :class="type === 'income' ? 'income-text' : 'expense-text'">{{ money(record.amount) }}</b>
           <small>{{ formatDateTime(record.createdAt) }}{{ record.note ? ` · ${record.note}` : "" }}</small>
         </li>
@@ -75,7 +74,7 @@
         </div>
         <ul class="record-list">
           <li v-for="record in selectedTypedRecords" :key="record.id">
-            <span>{{ record.category }}</span>
+            <button class="record-edit-link" :aria-label="`编辑账单：${record.note || record.category}`" @click="openEntryEditor(record)">{{ record.note || record.category }}</button>
             <b :class="type === 'income' ? 'income-text' : 'expense-text'">{{ money(record.amount) }}</b>
             <small>{{ formatDateTime(record.createdAt) }}</small>
           </li>
@@ -98,32 +97,6 @@
       </div>
     </section>
 
-    <div v-if="activeCategory" class="modal-mask" @click.self="closeModal">
-      <form class="modal-card" @submit.prevent="confirmRecord">
-        <h2>请输入{{ activeCategory }}{{ type === "income" ? "收入" : "支出" }}金额</h2>
-        <label>
-          金额
-          <input v-model.number="amount" type="number" min="0.01" step="0.01" placeholder="0.00" autofocus />
-        </label>
-        <label>
-          记账时间
-          <input v-model="recordTime" type="datetime-local" />
-        </label>
-        <label>
-          备注
-          <textarea v-model.trim="note" rows="3" placeholder="可选"></textarea>
-        </label>
-        <label v-if="activeCategory === '人情'">
-          对方姓名
-          <input v-model.trim="relationshipPerson" placeholder="对方姓名" />
-        </label>
-        <p v-if="error" class="error-text">{{ error }}</p>
-        <div class="modal-actions">
-          <button class="secondary-btn" type="button" @click="closeModal">取消</button>
-          <button class="primary-btn">确认</button>
-        </div>
-      </form>
-    </div>
   </main>
 </template>
 
@@ -149,10 +122,7 @@ import {
   TrendingUp
 } from "@lucide/vue";
 import {
-  addTransactionsToStore,
-  createTransaction,
   dateInputValue,
-  datetimeLocalValue,
   expenseCategories,
   formatDateTime,
   groupByCategory,
@@ -160,6 +130,8 @@ import {
   loadTransactionsFromStore,
   totalAmount
 } from "../services/storage";
+
+import { ledgerRevision, openEntryEditor } from "../services/editor";
 
 const props = defineProps({
   type: {
@@ -177,15 +149,9 @@ const selectedDate = ref(today);
 const selectedMonth = ref(thisMonth);
 const selectedYear = ref(thisYear);
 const selectedCategory = ref("");
-const activeCategory = ref("");
-const amount = ref(null);
-const note = ref("");
-const recordTime = ref(datetimeLocalValue(new Date()));
-const relationshipPerson = ref("");
-const error = ref("");
 
 const categories = computed(() => (props.type === "income" ? incomeCategories : expenseCategories));
-const pageTitle = computed(() => (props.type === "income" ? "收入模块" : "支出模块"));
+const pageTitle = computed(() => (props.type === "income" ? "收入" : "支出"));
 const periodLabel = computed(() => {
   if (periodMode.value === "day") return selectedDate.value === today ? "今日" : `${selectedDate.value} `;
   if (periodMode.value === "month") return selectedMonth.value === thisMonth ? "本月" : `${selectedMonth.value} `;
@@ -252,6 +218,7 @@ const categoryColors = {
 
 onMounted(load);
 watch(() => props.type, load);
+watch(ledgerRevision, load);
 
 async function load() {
   records.value = await loadTransactionsFromStore();
@@ -259,50 +226,11 @@ async function load() {
 
 function openModal(category) {
   selectedCategory.value = category;
-  activeCategory.value = category;
-  amount.value = null;
-  note.value = "";
-  relationshipPerson.value = "";
-  recordTime.value = `${defaultRecordDate()}T${currentTimeText()}`;
-  error.value = "";
+  openEntryEditor(null, { type: props.type, category, createdAt: new Date(`${defaultRecordDate()}T${currentTimeText()}`).toISOString() });
 }
 
 function selectCategory(category) {
   selectedCategory.value = selectedCategory.value === category ? "" : category;
-}
-
-function closeModal() {
-  activeCategory.value = "";
-}
-
-async function confirmRecord() {
-  if (!amount.value) {
-    error.value = "金额不能为空";
-    return;
-  }
-  if (Number(amount.value) <= 0) {
-    error.value = "金额必须大于 0";
-    return;
-  }
-  if (!recordTime.value) {
-    error.value = "请选择记账时间";
-    return;
-  }
-  const finalNote = activeCategory.value === "人情" && relationshipPerson.value
-    ? `${relationshipPerson.value}${note.value ? `：${note.value}` : ""}`
-    : note.value;
-  const record = createTransaction({
-    type: props.type,
-    category: activeCategory.value,
-    amount: amount.value,
-    note: finalNote,
-    createdAt: new Date(recordTime.value).toISOString()
-  });
-  records.value = await addTransactionsToStore([record]);
-  selectedDate.value = dateInputValue(new Date(record.createdAt));
-  selectedMonth.value = selectedDate.value.slice(0, 7);
-  selectedYear.value = new Date(record.createdAt).getFullYear();
-  closeModal();
 }
 
 function movePeriod(amount) {
@@ -365,16 +293,10 @@ function categoryIconStyle(category) {
   return { background, color };
 }
 
-function categoryCardStyle(category) {
-  const [background, color] = categoryColors[category] || categoryColors.其他;
-  return {
-    background: `linear-gradient(135deg, #ffffff 0%, ${background} 100%)`,
-    borderColor: `${color}26`
-  };
-}
 
 function recordTitle(record) {
   if (record.category !== "人情") return record.note || record.category;
+  if (record.counterparty) return record.counterparty;
   const noteText = record.note || "未填写对象";
   return noteText.split(/[：:，,。]/)[0] || "未填写对象";
 }

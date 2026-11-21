@@ -20,3 +20,16 @@ frontend/dist/
 Thumbs.db
 .vscode/
 .idea/
+.local/
+artifacts/
+.pytest_cache/
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/capacitor-cordova-android-plugins/
+frontend/android/local.properties
+frontend/android/app/src/main/assets/public/
+frontend/android/app/src/main/assets/capacitor.config.json
+frontend/android/app/src/main/assets/capacitor.plugins.json
+*.keystore
+*.jks

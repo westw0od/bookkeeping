@@ -4,7 +4,7 @@
       <router-link class="back-link" to="/">返回首页</router-link>
       <div>
         <p class="eyebrow">Balance</p>
-        <h1>结余总览</h1>
+        <h1>收支统计</h1>
       </div>
     </header>
 
@@ -23,15 +23,8 @@
       </article>
     </section>
 
-    <section class="date-toolbar">
-      <button class="secondary-btn" type="button" @click="moveDate(-1)">前一天</button>
-      <label>
-        查看日期
-        <input v-model="selectedDate" type="date" />
-      </label>
-      <button class="secondary-btn" type="button" @click="moveDate(1)">后一天</button>
-      <button class="secondary-btn" type="button" @click="selectedDate = today">今天</button>
-    </section>
+    <section class="panel transaction-period"><PeriodSelector v-model:mode="periodMode" v-model:day="selectedDate" v-model:month="selectedMonth" /></section>
+    <div class="classification-grid"><CategoryBreakdown :records="selectedRecords" type="expense" :period-label="selectedDateLabel.trim()" @select="openCategory" /><CategoryBreakdown :records="selectedRecords" type="income" :period-label="selectedDateLabel.trim()" @select="openCategory" /></div>
 
     <section class="ledger-layout">
       <div class="panel">
@@ -65,7 +58,7 @@
             :key="row.date"
             :class="['daily-row', { active: row.date === selectedDate }]"
             type="button"
-            @click="selectedDate = row.date"
+            @click="selectedDate = row.date; periodMode = 'day'"
           >
             <span>{{ row.date }}</span>
             <small>收 {{ money(row.income) }} / 支 {{ money(row.expense) }}</small>
@@ -79,26 +72,31 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
-import { dateInputValue, loadTransactionsFromStore, recordsByDate, totalAmount } from "../services/storage";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import CategoryBreakdown from "../components/CategoryBreakdown.vue";
+import PeriodSelector from "../components/PeriodSelector.vue";
+import { ledgerRevision } from "../services/editor";
+import { dateInputValue, inPeriod, loadTransactionsFromStore, totalAmount } from "../services/storage";
 
 const today = dateInputValue(new Date());
 const records = ref([]);
 const selectedDate = ref(today);
+const selectedMonth = ref(today.slice(0, 7)), periodMode = ref('day'), router = useRouter();
 
 const totalIncome = computed(() => totalAmount(records.value.filter((record) => record.type === "income")));
 const totalExpense = computed(() => totalAmount(records.value.filter((record) => record.type === "expense")));
 const totalBalance = computed(() => totalIncome.value - totalExpense.value);
-const selectedRecords = computed(() => recordsByDate(records.value, selectedDate.value));
+const selectedRecords = computed(() => records.value.filter(row => !row.revokedAt && inPeriod(row, periodMode.value, selectedDate.value, selectedMonth.value)));
 const dayIncome = computed(() => totalAmount(selectedRecords.value.filter((record) => record.type === "income")));
 const dayExpense = computed(() => totalAmount(selectedRecords.value.filter((record) => record.type === "expense")));
 const dayBalance = computed(() => dayIncome.value - dayExpense.value);
-const selectedDateLabel = computed(() => (selectedDate.value === today ? "今日" : `${selectedDate.value} `));
+const selectedDateLabel = computed(() => periodMode.value === 'all' ? '累计' : periodMode.value === 'month' ? selectedMonth.value === today.slice(0, 7) ? '本月' : `${selectedMonth.value} ` : selectedDate.value === today ? '今日' : `${selectedDate.value} `);
 const balanceAdvice = computed(() => {
-  if (!selectedRecords.value.length) return "这一天还没有收入或支出记录。";
-  if (dayBalance.value > 0) return "这一天收入高于支出，现金流状态不错。";
-  if (dayBalance.value === 0) return "这一天收支刚好持平。";
-  return "这一天支出高于收入，可以回看支出明细，确认是否有非必要消费。";
+  if (!selectedRecords.value.length) return "这个范围还没有收入或支出记录。";
+  if (dayBalance.value > 0) return "这个范围收入高于支出，可结合分类查看收入来源。";
+  if (dayBalance.value === 0) return "这个范围收支持平。";
+  return "这个范围支出高于收入，可结合分类查看主要开销。";
 });
 const dailyRows = computed(() => {
   const map = new Map();
@@ -123,12 +121,9 @@ const dailyRows = computed(() => {
 onMounted(async () => {
   records.value = await loadTransactionsFromStore();
 });
+watch(ledgerRevision, async () => { records.value = await loadTransactionsFromStore(); });
 
-function moveDate(days) {
-  const date = new Date(`${selectedDate.value}T12:00:00`);
-  date.setDate(date.getDate() + days);
-  selectedDate.value = dateInputValue(date);
-}
+function openCategory(value) { router.push({ path: '/ledger', query: { period: periodMode.value, day: selectedDate.value, month: selectedMonth.value, type: value.type, category: value.category } }); }
 
 function round(value) {
   return Math.round(Number(value || 0) * 100) / 100;
