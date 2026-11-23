@@ -1,0 +1,5 @@
+[Unit]
+Description=Check bounded web and database logs
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/logrotate /etc/logrotate.conf

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
@@ -28,6 +29,7 @@ from ai import call_chat_completion, parse_json_object, ai_extract_transaction
 from key_management import active_config, cipher, router as keys_router
 from ledger_import import router as import_router
 from query_agent import router as query_router
+from app_releases import router as releases_router, current_apk, ARTIFACTS
 
 UPLOAD_DIR = ROOT / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -46,6 +48,7 @@ app = FastAPI(title="记账 Bookkeeping", version="2.0.0", lifespan=lifespan)
 app.include_router(keys_router)
 app.include_router(import_router)
 app.include_router(query_router)
+app.include_router(releases_router)
 app.add_middleware(CORSMiddleware,
     allow_origins=[x.strip() for x in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,https://localhost,http://localhost,capacitor://localhost").split(",")],
     allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"])
@@ -62,8 +65,18 @@ async def security_headers(request, call_next):
 @app.exception_handler(httpx.HTTPError)
 async def model_error(request, exc):
     # Provider error bodies may include request details: do not return them to clients.
+    host = exc.request.url.host if exc.request else 'unknown'
+    logging.getLogger(__name__).warning('AI request failed: provider=%s error=%s', host, type(exc).__name__)
+    if isinstance(exc, (httpx.ConnectTimeout, httpx.ConnectError)):
+        detail = ('云服务器连接不到山东大学 AI 接口，请联系学校确认公网访问权限，或切换公网服务商对应的 Key。可先手动记账。'
+                  if host == 'xplt.sdu.edu.cn' else '无法连接所选 AI 服务，请稍后重试或检查 AI 设置。可先手动记账。')
+        return JSONResponse(status_code=503, content={'detail': detail})
+    if isinstance(exc, httpx.TimeoutException):
+        return JSONResponse(status_code=504, content={'detail': 'AI 回复超时，请稍后重试或手动记账。'})
     if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429:
         return JSONResponse(status_code=429, content={"detail": "AI 服务商暂时限制了调用，请稍后重试或检查服务商额度"})
+    if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code in (401, 403):
+        return JSONResponse(status_code=502, content={'detail': 'AI Key 无效或没有访问权限，请在 AI 设置中检查 Key 和模型。'})
     return JSONResponse(status_code=502, content={"detail": "AI 服务暂时不可用，请稍后重试或手动记账"})
 
 @app.exception_handler(RequestValidationError)
@@ -379,11 +392,13 @@ async def analysis(payload: AnalysisRequest, user: User = Depends(current_user),
 
 @app.get('/downloads/bookkeeping.apk', include_in_schema=False)
 def download_apk():
+    if (ARTIFACTS / 'android' / 'latest.json').exists():
+        return current_apk()
     path = ROOT.parent / 'artifacts' / 'bookkeeping-debug.apk'
     if not path.is_file():
         raise HTTPException(404, '安装包尚未生成')
     return FileResponse(path, media_type='application/vnd.android.package-archive',
-                        filename='bookkeeping-2.3.0.apk', headers={'Cache-Control': 'no-store'})
+                        filename='bookkeeping.apk', headers={'Cache-Control': 'no-store'})
 
 # Same-origin production web app, with history fallback restricted to non-API paths.
 if (WEB_DIR / "assets").exists():

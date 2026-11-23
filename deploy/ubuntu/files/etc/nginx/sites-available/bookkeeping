@@ -1,0 +1,42 @@
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name 39.107.13.249;
+    server_tokens off;
+    access_log /var/log/nginx/bookkeeping-access.log bookkeeping;
+    error_log /var/log/nginx/bookkeeping-error.log warn;
+    location ^~ /.well-known/acme-challenge/ { root /var/www/letsencrypt; default_type text/plain; }
+    location / { return 301 https://39.107.13.249$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name 39.107.13.249;
+    server_tokens off;
+    ssl_certificate /etc/letsencrypt/live/bookkeeping-ip/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/bookkeeping-ip/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:BookkeepingTLS:5m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+    add_header Strict-Transport-Security "max-age=86400" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    client_max_body_size 12m;
+    access_log /var/log/nginx/bookkeeping-access.log bookkeeping;
+    error_log /var/log/nginx/bookkeeping-error.log warn;
+    location ~ (^|/)\. { return 404; }
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 90s;
+        proxy_read_timeout 90s;
+    }
+}

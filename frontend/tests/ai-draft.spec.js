@@ -2,6 +2,22 @@ const { test, expect } = require("@playwright/test");
 const path = require("node:path");
 const artifact = name => path.join(__dirname, "../../artifacts", name);
 
+test('school AI connectivity failure releases busy state and preserves the input draft', async ({ page }) => {
+  const state = await previewSession(page);
+  await page.unroute('**/api/agent/text');
+  const detail = '云服务器连接不到山东大学 AI 接口，请联系学校确认公网访问权限，或切换公网服务商对应的 Key。可先手动记账。';
+  await page.route('**/api/agent/text', route => route.fulfill({ status: 503, json: { detail } }));
+  const input = page.getByRole('textbox', { name: '描述这次收支' });
+  await input.fill('今天午饭花了25元，先不要丢失这段输入');
+  await page.getByRole('button', { name: 'AI 分析', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveText(detail);
+  await expect(page.getByRole('button', { name: 'AI 分析', exact: true })).toBeEnabled();
+  await expect(input).toHaveValue('今天午饭花了25元，先不要丢失这段输入');
+  await page.reload();
+  await expect(input).toHaveValue('今天午饭花了25元，先不要丢失这段输入');
+  expect(state.writes).toEqual([]);
+});
+
 async function previewSession(page, { failSave = false, empty = false } = {}) {
   const stored = [];
   const writes = [];

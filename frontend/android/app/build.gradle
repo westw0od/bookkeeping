@@ -7,8 +7,8 @@ android {
         applicationId "com.westw0od.bookkeeping"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "2.3.0"
+        versionCode 8
+        versionName "2.4.1"
         manifestPlaceholders = [cleartextTraffic: "false"]
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

@@ -15,7 +15,7 @@ async def call_chat_message(messages, config, vision=False, tools=None, tool_cho
     if tools:
         payload.update(tools=tools, tool_choice=tool_choice, parallel_tool_calls=False)
     # No redirects: credentials must only be sent to the selected fixed provider.
-    async with httpx.AsyncClient(timeout=60, follow_redirects=False) as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=5, pool=5, write=15), follow_redirects=False) as client:
         response = await client.post(config["base_url"].rstrip("/") + "/chat/completions",
             headers={"Authorization": "Bearer " + config["api_key"]}, json=payload)
         response.raise_for_status()

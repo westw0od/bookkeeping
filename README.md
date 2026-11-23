@@ -1,6 +1,8 @@
 # 记账 · Bookkeeping
 
-当前版本：2.3.0。最近记录支持折叠并按账号记住状态；「账单」与「统计」支持按日、按月和全部日期查看收入/支出分类，展示金额、笔数、占比和排名，点击分类可查看对应明细。
+当前版本：2.4.1。Android 支持启动检查更新、账号页手动检查、下载进度与取消、安装包校验及系统确认安装。最近记录支持折叠；「账单」与「统计」支持日/月分类、金额、笔数、占比、排名及分类明细。
+
+当前部署：[网页版](https://39.107.13.249/#/) · [Android 安装包](https://39.107.13.249/downloads/bookkeeping.apk)。应用运行在独立云服务器，本机部署已清理，仓库保留源码和开发脚本。
 
 Vue 3 + Vite + Capacitor Android，Python FastAPI 后端，MySQL 8.0 数据库。
 网页版和 App 共用账号、账本和默认 AI Key。
@@ -16,10 +18,10 @@ Vue 3 + Vite + Capacitor Android，Python FastAPI 后端，MySQL 8.0 数据库�
 - AI 结果紧接输入框显示为待确认账单，可修正收支、金额、分类和备注；点击“确认记账”后才入账。网络失败保留草稿并明确提示。
 - 用户使用自己的 AI Key，应用不另设每日提问次数限制；服务商自身额度或限流会正常反馈。
 
-## 本机运行
+## 本机开发（按需重新配置）
 
-当前电脑使用独立 MySQL 8.0 实例：127.0.0.1:33306，数据库 bookkeeping，数据库用户 bookkeeping。
-数据目录为 `%LOCALAPPDATA%/Bookkeeping/mysql`，不会修改原来的 MySQL80 服务。
+本机开发脚本使用独立 MySQL 8.0 实例：127.0.0.1:33306，数据库 bookkeeping，数据库用户 bookkeeping。
+数据目录约定为 `%LOCALAPPDATA%/Bookkeeping/mysql`，不会修改原来的 MySQL80 服务。本次清理已移除本机运行环境、旧数据和配置；重新开发前需按下文安装依赖、初始化独立数据库并配置 `.env`。
 数据库密码和服务端加密密钥仅保存在被 Git 忽略的 `backend/.env`。
 
 ```powershell
@@ -191,6 +193,10 @@ AI 的真实付费调用需用户添加有效 Key 后验证；自动测试使用
 如果本地存储不可用，页面会明确提示无法保存，不会声称草稿已保存。
 
 ## 日志与临时公网访问
+
+独立云服务器的当前部署、证书续期、备份和运维命令见 [云服务器运行说明](docs/cloud-deployment.md)。下面的临时通道仅用于本机测试。
+
+Android 2.4.1 支持应用内检查和下载安装更新，首次需手动覆盖安装。版本接口、校验及发布方式见 [应用内更新说明](docs/app-updates.md)。
 
 `start-local.ps1` 通过 `backend/run_server.py` 启动，日志位于 `.local/logs/`。
 应用、访问及穿透日志分别使用 app.log、access.log、tunnel.log，每类单文件 5 MiB，最多保留 4 个轮转文件，三类合计约 75 MiB。

@@ -1,0 +1,31 @@
+[Unit]
+Description=Bookkeeping API and web
+Wants=network-online.target
+After=network-online.target mysql.service
+Requires=mysql.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=bookkeeping
+Group=bookkeeping
+WorkingDirectory=/opt/bookkeeping/backend
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/opt/bookkeeping/.venv/bin/python -m alembic upgrade head
+ExecStart=/opt/bookkeeping/.venv/bin/python /opt/bookkeeping/backend/run_server.py
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/bookkeeping/.local/logs /opt/bookkeeping/backend/uploads
+MemoryHigh=350M
+MemoryMax=500M
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target

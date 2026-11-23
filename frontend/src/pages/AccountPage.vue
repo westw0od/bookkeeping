@@ -15,12 +15,19 @@
       </form>
       <button class="secondary-btn logout-btn" :disabled="busy" @click="signOut">退出登录</button>
     </section>
+    <section v-if="updates.supported" class="auth-card update-settings" aria-label="应用更新">
+      <div><h2>应用更新</h2><p class="muted">{{ updates.current ? `当前版本 ${updates.current.versionName}` : '打开应用时自动检查新版本' }}</p></div>
+      <button class="secondary-btn" :disabled="updates.checking || updates.phase === 'downloading'" @click="checkForUpdates(true)">{{ updates.checking ? '检查中…' : '检查更新' }}</button>
+      <p v-if="updates.message" class="update-feedback" role="status">{{ updates.message }}</p>
+      <button v-if="updates.release" class="text-button update-feedback" @click="showAvailableUpdate">查看 {{ updates.release.version_name }} 更新</button>
+    </section>
   </main>
 </template>
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { api, clearSession, currentUser, logout } from "../services/api";
+import { updateState as updates, checkForUpdates, showAvailableUpdate } from "../services/appUpdates";
 const router = useRouter();
 const oldPassword = ref(""), newPassword = ref(""), confirmation = ref(""), error = ref(""), busy = ref(false);
 async function changePassword() {

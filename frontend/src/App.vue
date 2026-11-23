@@ -9,12 +9,17 @@
   <div v-if="globalError" class="connection-error" role="alert">{{ globalError }} <button @click="retry">重试</button></div>
   <router-view :key="`${currentUser?.id || 'guest'}:${$route.path}`" />
   <EntryEditor v-if="currentUser && editorRequest" :key="`${currentUser.id}:${editorRequest.key}`" :request="editorRequest" />
+  <AppUpdateDialog v-if="!editorRequest" />
 </template>
 <script setup>
+import { onMounted } from "vue";
+import AppUpdateDialog from "./components/AppUpdateDialog.vue";
+import { startUpdateChecks } from "./services/appUpdates";
 import { currentUser, globalError } from "./services/api";
 import { BookOpen, KeyRound, UserRound } from "@lucide/vue";
 import DraftsMenu from "./components/DraftsMenu.vue";
 import EntryEditor from "./components/EntryEditor.vue";
 import { editorRequest } from "./services/editor";
 function retry() { location.reload(); }
+onMounted(startUpdateChecks);
 </script>

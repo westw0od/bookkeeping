@@ -1,0 +1,6 @@
+[Unit]
+Description=Daily Bookkeeping database and encryption-key backup
+After=mysql.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/bookkeeping-backup
