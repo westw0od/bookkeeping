@@ -34,7 +34,7 @@
           <div class="provider-symbol" :style="{ background: providerInfo(key.provider).tint, color: providerInfo(key.provider).color }"><component :is="providerInfo(key.provider).icon" :size="23" :stroke-width="1.7" /></div>
           <div class="connection-row-info"><div class="connection-row-title"><h3>{{ key.label }}</h3><span v-if="key.is_default" class="connection-default"><Check :size="11" />默认使用</span></div>
             <p>{{ providerInfo(key.provider).name }} <span>·</span> <code>{{ key.masked_key }}</code></p><code class="connection-model">{{ key.model }}</code></div>
-          <div class="connection-row-actions"><button class="connect-switch" :disabled="busy" @click="openEdit(key)">修改模型</button><button v-if="!key.is_default" class="connect-switch" :disabled="busy" @click="makeDefault(key)">设为默认</button><button class="connect-delete" aria-label="删除" :title="`删除 ${key.label}`" :disabled="busy" @click="requestDelete(key)"><Trash2 :size="17" /></button></div>
+          <div class="connection-row-actions"><button v-if="!key.is_default" class="connect-switch" :disabled="busy" @click="makeDefault(key)">设为默认</button><button class="connect-delete" aria-label="删除" :title="`删除 ${key.label}`" :disabled="busy" @click="requestDelete(key)"><Trash2 :size="17" /></button></div>
         </article>
         <button v-if="keys.length" class="library-add" :disabled="busy || keys.length >= 10" @click="openAdd"><Plus :size="16" /> 添加另一个 Key</button>
       </section>
@@ -48,27 +48,22 @@
 
     <div v-if="showAdd" class="connect-overlay" @click.self="closeAdd" @keydown="dialogKeys">
       <section ref="addDialog" class="connect-dialog" role="dialog" aria-modal="true" aria-labelledby="add-key-title">
-        <header class="connect-dialog-heading"><div class="dialog-icon"><KeyRound :size="22" /></div><div><h2 id="add-key-title">{{ editingKey ? '修改模型' : '添加 AI Key' }}</h2><p>{{ editingKey ? '沿用已保存的 Key，无需重新填写。' : '一次连接，每次记账都能用。' }}</p></div><button class="dialog-close" type="button" aria-label="关闭添加窗口" :disabled="busy" @click="closeAdd"><X :size="20" /></button></header>
+        <header class="connect-dialog-heading"><div class="dialog-icon"><KeyRound :size="22" /></div><div><h2 id="add-key-title">添加 AI Key</h2><p>一次连接，每次记账都能用。</p></div><button class="dialog-close" type="button" aria-label="关闭添加窗口" :disabled="busy" @click="closeAdd"><X :size="20" /></button></header>
         <form class="connect-form" @submit.prevent="addKey">
-          <label>服务商<select v-model="provider" aria-label="服务商" :disabled="busy || !!editingKey" @change="setModels"><option v-for="item in providers" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+          <label>服务商<select v-model="provider" aria-label="服务商" :disabled="busy" @change="setModels"><option v-for="item in providers" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
           <div class="provider-preview"><span :style="{ color: selectedProvider.color }"><component :is="selectedProvider.icon" :size="19" /></span><div><strong>{{ selectedProvider.name }}</strong><code>{{ selectedProvider.url }}</code></div><span class="compatible-badge">兼容 OpenAI</span></div>
-          <template v-if="!editingKey"><label class="key-secret-label" for="new-api-key">API Key</label><div class="secret-field"><input id="new-api-key" ref="secretInput" v-model.trim="secret" :type="revealSecret ? 'text' : 'password'" autocomplete="off" :disabled="busy" required minlength="8" maxlength="512" placeholder="粘贴你的 API Key" /><button type="button" :aria-label="revealSecret ? '隐藏 Key' : '显示 Key'" @click="revealSecret = !revealSecret"><EyeOff v-if="revealSecret" :size="18" /><Eye v-else :size="18" /></button></div>
-          <p class="connect-field-hint"><LockKeyhole :size="12" /> 加密保存后，不再展示完整 Key。</p></template>
-          <template v-if="provider === 'sdu'">
-            <label class="model-picker">选择文字模型<select v-model="presetSelection" aria-label="选择文字模型" :disabled="busy" @change="selectPreset"><optgroup v-for="group in sduModelGroups" :key="group.label" :label="group.label"><option v-for="item in group.models" :key="item.id" :value="item.id">{{ item.id.split('/')[1] }}{{ item.vision ? ' · 支持图片' : ' · 文字' }}</option></optgroup><option value="custom">自定义模型 ID</option></select></label>
-            <p class="connect-field-hint">通过山大 AI 调用，使用学校平台的 Key；服务器仍需有校园网访问权限。</p>
-            <p v-if="selectedModelPreset?.vision" class="connect-field-hint">此模型支持图片输入，可在下方调整图片模型。</p>
-          </template>
+          <label class="key-secret-label" for="new-api-key">API Key</label><div class="secret-field"><input id="new-api-key" ref="secretInput" v-model.trim="secret" :type="revealSecret ? 'text' : 'password'" autocomplete="off" :disabled="busy" required minlength="8" maxlength="512" placeholder="粘贴你的 API Key" /><button type="button" :aria-label="revealSecret ? '隐藏 Key' : '显示 Key'" @click="revealSecret = !revealSecret"><EyeOff v-if="revealSecret" :size="18" /><Eye v-else :size="18" /></button></div>
+          <p class="connect-field-hint"><LockKeyhole :size="12" /> 加密保存后，不再展示完整 Key。</p>
           <div class="preset-model"><span>当前文字模型</span><code>{{ model }}</code></div>
-          <details class="connect-advanced" :open="provider === 'sdu' && presetSelection === 'custom'"><summary>模型与备注 <span>可选设置</span><ChevronDown :size="15" /></summary><div>
+          <details class="connect-advanced"><summary>模型与备注 <span>可选设置</span><ChevronDown :size="15" /></summary><div>
             <label>名称<input v-model.trim="label" :disabled="busy" maxlength="50" :placeholder="`${selectedProvider.short} · 日常记账`" /></label>
-            <label>文字模型<input v-model.trim="model" :disabled="busy" required maxlength="100" @input="syncPresetSelection" /></label>
+            <label>文字模型<input v-model.trim="model" :disabled="busy" required maxlength="100" /></label>
             <label>图片模型（可选）<input v-model.trim="visionModel" :disabled="busy" maxlength="100" placeholder="留空则不启用图片识别" /></label>
             <p class="connect-field-hint">模型需在服务商账号中可用；图片识别需单独配置支持图片输入的模型。</p>
           </div></details>
-          <label v-if="keys.length && !editingKey" class="connect-checkbox"><input v-model="setAsDefault" type="checkbox" :disabled="busy" /> 保存后设为默认 Key</label>
+          <label v-if="keys.length" class="connect-checkbox"><input v-model="setAsDefault" type="checkbox" :disabled="busy" /> 保存后设为默认 Key</label>
           <p v-if="error" class="connections-notice is-error dialog-error" role="alert"><CircleAlert :size="16" />{{ error }}</p>
-          <div class="connect-dialog-footer"><button class="connect-cancel" type="button" :disabled="busy" @click="closeAdd">取消</button><button class="connect-primary" :disabled="busy"><LoaderCircle v-if="busy" class="connect-spinner" :size="17" /><Plus v-else :size="17" />{{ busy ? '保存中…' : editingKey ? '保存修改' : '保存 Key' }}</button></div>
+          <div class="connect-dialog-footer"><button class="connect-cancel" type="button" :disabled="busy" @click="closeAdd">取消</button><button class="connect-primary" :disabled="busy"><LoaderCircle v-if="busy" class="connect-spinner" :size="17" /><Plus v-else :size="17" />{{ busy ? '保存中…' : '保存 Key' }}</button></div>
           <p class="connect-billing-note">使用 AI 时，会消耗对应服务商的额度。</p>
         </form>
       </section>
@@ -87,7 +82,6 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { ArrowLeft, ArrowUpRight, Bot, Check, ChevronDown, CircleAlert, Cloud, Eye, EyeOff, GraduationCap, Image as ImageIcon, KeyRound, LoaderCircle, LockKeyhole, MessageSquareText, Plus, RefreshCw, ShieldCheck, Sparkles, Trash2, X } from "@lucide/vue";
 import { api } from "../services/api";
-import { modelPreset, sduModelGroups } from "../services/modelPresets";
 
 const providers = [
   { id: "sdu", name: "山大 AI", short: "山大 AI", icon: GraduationCap, tint: "#fff1f3", color: "#9b2647", url: "https://xplt.sdu.edu.cn:4000/v1", model: "SDU-AI/DeepSeek-V4-Flash", vision: "" },
@@ -97,36 +91,21 @@ const providers = [
 ];
 const keys = ref([]), loading = ref(true), busy = ref(false), error = ref(""), message = ref("");
 const showAdd = ref(false), pendingDelete = ref(null), revealSecret = ref(false), setAsDefault = ref(false);
-const editingKey = ref(null), presetSelection = ref(providers[0].model);
 const provider = ref("sdu"), label = ref(""), secret = ref(""), model = ref(providers[0].model), visionModel = ref("");
 const addTrigger = ref(null), secretInput = ref(null), addDialog = ref(null), deleteDialog = ref(null);
 const defaultKey = computed(() => keys.value.find(key => key.is_default));
 const selectedProvider = computed(() => providerInfo(provider.value));
-const selectedModelPreset = computed(() => provider.value === 'sdu' ? modelPreset(model.value) : null);
 function providerInfo(id) { return providers.find(item => item.id === id) || providers[0]; }
-function syncPresetSelection() { presetSelection.value = modelPreset(model.value) ? model.value : 'custom'; }
-function setModels() { model.value = selectedProvider.value.model; visionModel.value = selectedProvider.value.vision; syncPresetSelection(); }
-function selectPreset() {
-  if (presetSelection.value === 'custom') return;
-  model.value = presetSelection.value;
-  visionModel.value = modelPreset(model.value)?.vision ? model.value : '';
-}
+function setModels() { model.value = selectedProvider.value.model; visionModel.value = selectedProvider.value.vision; }
 async function load() { keys.value = await api("/api/keys"); }
 async function refresh() { loading.value = true; error.value = ""; try { await load(); } catch (err) { error.value = err.message; } finally { loading.value = false; } }
 onMounted(refresh);
 watch(() => showAdd.value || !!pendingDelete.value, value => { document.body.style.overflow = value ? "hidden" : ""; });
 onUnmounted(() => { document.body.style.overflow = ""; secret.value = ""; });
 async function openAdd() {
-  editingKey.value = null;
   provider.value = "sdu"; label.value = ""; secret.value = ""; revealSecret.value = false; setAsDefault.value = false;
   setModels(); error.value = ""; message.value = ""; showAdd.value = true;
   await nextTick(); secretInput.value?.focus();
-}
-async function openEdit(key) {
-  editingKey.value = key; provider.value = key.provider; label.value = key.label;
-  model.value = key.model; visionModel.value = key.vision_model || ''; secret.value = '';
-  syncPresetSelection(); error.value = ''; message.value = ''; showAdd.value = true;
-  await nextTick(); addDialog.value?.querySelector('select:not(:disabled), summary')?.focus();
 }
 function closeAdd() { if (busy.value) return; showAdd.value = false; secret.value = ""; error.value = ""; addTrigger.value?.focus(); }
 function closeDelete() { if (!busy.value) { pendingDelete.value = null; error.value = ""; addTrigger.value?.focus(); } }
@@ -143,13 +122,6 @@ async function addKey() {
   if (busy.value) return;
   busy.value = true; error.value = ""; message.value = "";
   try {
-    if (editingKey.value) {
-      await api(`/api/keys/${editingKey.value.id}`, { method: 'PATCH', body: {
-        label: label.value || editingKey.value.label, model: model.value, vision_model: visionModel.value || null } });
-      showAdd.value = false; editingKey.value = null;
-      await load(); message.value = '模型已更新，后续 AI 请求将使用新配置。';
-      await nextTick(); addTrigger.value?.focus(); return;
-    }
     const saved = await api("/api/keys", { method: "POST", body: { label: label.value || `${selectedProvider.value.short} · 日常记账`,
       provider: provider.value, api_key: secret.value, model: model.value, vision_model: visionModel.value || null } });
     secret.value = "";
@@ -289,7 +261,6 @@ async function confirmDelete() {
 .secret-field button { display: grid; place-items: center; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; padding: 9px; color: #a6a7bd; }
 .connect-field-hint { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #a1a4b8; line-height: 1.7; margin: 9px 0 0; }
 .preset-model { margin-top: 23px; padding: 12px 0; display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; }
-.model-picker { margin-top: 23px; }
 .preset-model > span { font-size: 10px; color: #9fa2b4; white-space: nowrap; padding-top: 2px; }
 .preset-model > code { font-size: 11px; color: #7d759e; overflow-wrap: anywhere; text-align: right; line-height: 1.6; }
 .connect-advanced { border-top: 1px solid #f0f0f6; border-bottom: 1px solid #f0f0f6; }
@@ -348,7 +319,6 @@ async function confirmDelete() {
   .connection-row .provider-symbol { width: 37px; height: 37px; border-radius: 12px; }
   .connection-row-title h3 { font-size: 12px; }
   .connection-row-actions { gap: 3px; }
-  .connection-row-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 104px; }
   .connect-switch { padding: 6px; font-size: 9px; }
   .connection-model { font-size: 10px; }
   .library-heading { padding: 21px 19px; }

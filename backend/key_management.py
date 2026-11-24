@@ -33,11 +33,6 @@ class KeyIn(BaseModel):
     model: str = Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9:._/-]+$")
     vision_model: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9:._/-]+$")
 
-class KeyModelsIn(BaseModel):
-    label: str = Field(min_length=1, max_length=50)
-    model: str = Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9:._/-]+$")
-    vision_model: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9:._/-]+$")
-
 router = APIRouter(prefix="/api/keys", tags=["API Key"])
 
 def locked_user(db, user):
@@ -80,20 +75,6 @@ def add_key(payload: KeyIn, user: User = Depends(current_user), db: Session = De
     db.flush()
     if not user.default_key_id:
         user.default_key_id = row.id
-    db.commit()
-    return public_key(row, user.default_key_id)
-
-@router.patch("/{key_id}")
-def update_key_models(key_id: UUID, payload: KeyModelsIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    user = locked_user(db, user)
-    row = db.scalar(select(UserAPIKey).where(UserAPIKey.id == str(key_id), UserAPIKey.user_id == user.id))
-    if not row:
-        raise HTTPException(404, "Key 不存在")
-    label = payload.label.strip()
-    if not label:
-        raise HTTPException(422, "名称不能为空")
-    # Keep provider, encrypted secret and default selection unchanged.
-    row.label, row.model, row.vision_model = label, payload.model, payload.vision_model
     db.commit()
     return public_key(row, user.default_key_id)
 
